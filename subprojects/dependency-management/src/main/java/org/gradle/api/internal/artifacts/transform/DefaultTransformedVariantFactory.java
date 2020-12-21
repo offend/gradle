@@ -65,7 +65,17 @@ public class DefaultTransformedVariantFactory implements TransformedVariantFacto
         } else {
             variantKey = new VariantKey(identifier, target);
         }
-        return variants.computeIfAbsent(variantKey, key -> factory.create(componentIdentifier, sourceVariant, variantDefinition, dependenciesResolverFactory));
+
+        // Can't use computeIfAbsent() as the default implementation does not allow recursive updates
+        ResolvedArtifactSet result = variants.get(variantKey);
+        if (result == null) {
+            ResolvedArtifactSet newResult = factory.create(componentIdentifier, sourceVariant, variantDefinition, dependenciesResolverFactory);
+            result = variants.putIfAbsent(variantKey, newResult);
+            if (result == null) {
+                result = newResult;
+            }
+        }
+        return result;
     }
 
     private TransformedExternalArtifactSet doCreateExternal(ComponentIdentifier componentIdentifier, ResolvedVariant sourceVariant, VariantDefinition variantDefinition, ExtraExecutionGraphDependenciesResolverFactory dependenciesResolverFactory) {
